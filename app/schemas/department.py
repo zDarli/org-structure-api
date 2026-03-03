@@ -1,5 +1,10 @@
-from typing import Optional
+from __future__ import annotations
+
+from typing import Optional, List
+
 from pydantic import BaseModel, Field, field_validator, ConfigDict
+
+from app.schemas.employee import EmployeeResponse
 
 
 class DepartmentBase(BaseModel):
@@ -39,3 +44,11 @@ class DepartmentResponse(BaseModel):
     id: int
     name: str
     parent_id: Optional[int]
+
+
+class DepartmentTreeNode(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    department: DepartmentResponse
+    employees: List[EmployeeResponse] = []
+    children: List["DepartmentTreeNode"] = []
