@@ -34,3 +34,16 @@ async def create_department(db: AsyncSession, data: DepartmentCreate) -> Departm
 
     await db.refresh(department)
     return department
+
+
+async def get_department_by_id(db: AsyncSession, department_id: int) -> Department:
+    res = await db.execute(select(Department).where(Department.id == department_id))
+    department = res.scalar_one_or_none()
+
+    if department is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Department not found",
+        )
+
+    return department
