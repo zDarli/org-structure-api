@@ -48,7 +48,7 @@ async def get_department_handler(
 
 
 @router.post(
-    "/departments/{department_id}/employees",
+    "/{department_id}/employees/",
     response_model=EmployeeResponse,
     status_code=status.HTTP_201_CREATED,
 )
@@ -63,7 +63,7 @@ async def create_employee_handler(
     return employee
 
 
-@router.patch("/departments/{department_id}", response_model=DepartmentResponse)
+@router.patch("/{department_id}", response_model=DepartmentResponse)
 async def update_department_handler(
     department_id: int,
     payload: DepartmentUpdate,
@@ -72,7 +72,7 @@ async def update_department_handler(
     return await update_department(db=db, department_id=department_id, payload=payload)
 
 
-@router.delete("/departments/{department_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{department_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_department_handler(
     department_id: int,
     mode: DeleteMode = Query(DeleteMode.cascade),
