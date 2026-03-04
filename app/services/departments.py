@@ -147,12 +147,6 @@ async def _assert_no_cycle(
     department_id: int,
     new_parent_id: Optional[int],
 ) -> None:
-    """
-    Запрещаем цикл: нельзя назначить parent так, чтобы department оказался в цепочке своих предков.
-
-    Идея:
-    идём от new_parent вверх по parent_id, и если встречаем department_id -> цикл.
-    """
     if new_parent_id is None:
         return
 
@@ -187,8 +181,6 @@ async def update_department(
     new_name = payload.name if payload.name is not None else department.name
 
     # Важно: отличать "не передали" от "передали null".
-    # В Pydantic v2: payload.parent_id будет None и если передали null, и если не передали.
-    # Если тебе нужно строго различать — можно использовать payload.model_fields_set.
     if "parent_id" in payload.model_fields_set:
         new_parent_id = payload.parent_id  # может быть None (сделать корнем)
     else:
@@ -306,7 +298,6 @@ async def delete_department(
         return
 
     # mode == cascade
-    # Тут именно DB/ORM cascade: удаляем корень, остальное удалит БД по ON DELETE CASCADE
     try:
         await db.delete(dept)
         await db.commit()
