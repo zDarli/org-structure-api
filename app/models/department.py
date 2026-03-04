@@ -38,9 +38,11 @@ class Department(Base):
     children: Mapped[List["Department"]] = relationship(
         back_populates="parent",
         cascade="all, delete",
+        passive_deletes=True,
     )
 
     employees: Mapped[List["Employee"]] = relationship(
         back_populates="department",
         cascade="all, delete",
+        passive_deletes=True,
     )

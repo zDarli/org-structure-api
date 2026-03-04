@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_db
@@ -7,19 +7,23 @@ from app.schemas.department import (
     DepartmentResponse,
     DepartmentTreeNode,
     DepartmentUpdate,
+    DeleteMode,
 )
 from app.schemas.employee import EmployeeCreate, EmployeeResponse
 from app.services.departments import (
     create_department,
     get_department_tree,
     update_department,
+    delete_department,
 )
 from app.services.employees import create_employee
 
 router = APIRouter(prefix="/departments", tags=["departments"])
 
 
-@router.post("/", response_model=DepartmentResponse, status_code=201)
+@router.post(
+    "/", response_model=DepartmentResponse, status_code=status.HTTP_201_CREATED
+)
 async def create_department_handler(
     payload: DepartmentCreate,
     db: AsyncSession = Depends(get_db),
@@ -46,7 +50,7 @@ async def get_department_handler(
 @router.post(
     "/departments/{department_id}/employees",
     response_model=EmployeeResponse,
-    status_code=201,
+    status_code=status.HTTP_201_CREATED,
 )
 async def create_employee_handler(
     department_id: int,
@@ -66,3 +70,19 @@ async def update_department_handler(
     db: AsyncSession = Depends(get_db),
 ) -> DepartmentResponse:
     return await update_department(db=db, department_id=department_id, payload=payload)
+
+
+@router.delete("/departments/{department_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_department_handler(
+    department_id: int,
+    mode: DeleteMode = Query(DeleteMode.cascade),
+    reassign_to_department_id: int | None = Query(default=None, ge=1),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    await delete_department(
+        db=db,
+        department_id=department_id,
+        mode=mode,
+        reassign_to_department_id=reassign_to_department_id,
+    )
+    return None
