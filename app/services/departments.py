@@ -1,10 +1,14 @@
+from __future__ import annotations
+
+from typing import Optional
+
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, status
 
 from app.models.department import Department
-from app.schemas.department import DepartmentCreate
+from app.schemas.department import DepartmentCreate, DepartmentUpdate
 from app.models.employee import Employee
 from app.schemas.department import DepartmentResponse, DepartmentTreeNode
 from app.schemas.employee import EmployeeResponse
@@ -121,3 +125,90 @@ async def get_department_tree(
             node_by_id[d.parent_id].children.append(node_by_id[d.id])
 
     return node_by_id[root.id]
+
+
+async def _assert_no_cycle(
+    db: AsyncSession,
+    department_id: int,
+    new_parent_id: Optional[int],
+) -> None:
+    """
+    Запрещаем цикл: нельзя назначить parent так, чтобы department оказался в цепочке своих предков.
+
+    Идея:
+    идём от new_parent вверх по parent_id, и если встречаем department_id -> цикл.
+    """
+    if new_parent_id is None:
+        return
+
+    current_id: Optional[int] = new_parent_id
+    while current_id is not None:
+        if current_id == department_id:
+            raise HTTPException(
+                status_code=409, detail="Cycle detected in department tree"
+            )
+
+        res = await db.execute(
+            select(Department.parent_id).where(Department.id == current_id)
+        )
+        current_id = res.scalar_one_or_none()
+        # Если parent_id == None — дошли до корня, цикла нет
+
+
+async def update_department(
+    db: AsyncSession,
+    department_id: int,
+    payload: DepartmentUpdate,
+) -> Department:
+    # 1) find department
+    department = await db.get(Department, department_id)
+    if department is None:
+        raise HTTPException(status_code=404, detail="Department not found")
+
+    # 2) compute "new" values (если поле не передали — остаётся старое)
+    new_name = payload.name if payload.name is not None else department.name
+
+    # Важно: отличать "не передали" от "передали null".
+    # В Pydantic v2: payload.parent_id будет None и если передали null, и если не передали.
+    # Если тебе нужно строго различать — можно использовать payload.model_fields_set.
+    if "parent_id" in payload.model_fields_set:
+        new_parent_id = payload.parent_id  # может быть None (сделать корнем)
+    else:
+        new_parent_id = department.parent_id
+
+    # 3) parent != self
+    if new_parent_id == department_id:
+        raise HTTPException(
+            status_code=409, detail="Department cannot be its own parent"
+        )
+
+    # 4) если parent задан — он должен существовать
+    if new_parent_id is not None:
+        parent_exists = await db.execute(
+            select(Department.id).where(Department.id == new_parent_id)
+        )
+        if parent_exists.scalar_one_or_none() is None:
+            raise HTTPException(status_code=404, detail="Parent department not found")
+
+    # 5) проверка цикла (только если реально меняем parent_id)
+    if new_parent_id != department.parent_id:
+        await _assert_no_cycle(
+            db=db, department_id=department_id, new_parent_id=new_parent_id
+        )
+
+    # 6) apply changes
+    department.name = new_name
+    department.parent_id = new_parent_id
+
+    # 7) commit (ловим уникальность name+parent_id)
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="Department with same name already exists in this parent",
+        )
+
+    await db.refresh(department)
+    return department
