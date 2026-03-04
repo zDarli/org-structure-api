@@ -30,7 +30,6 @@ if not TEST_DATABASE_URL:
 
 @pytest.fixture(scope="session")
 def anyio_backend() -> str:
-    # чтобы pytest-anyio работал на asyncio
     return "asyncio"
 
 
@@ -56,12 +55,7 @@ async def db_session(engine: AsyncEngine) -> AsyncSession:
 
 @pytest.fixture(autouse=True)
 async def clean_db(db_session: AsyncSession) -> None:
-    """
-    Гарантируем изоляцию тестов.
-    Быстро: чистим таблицы после каждого теста.
-    """
     yield
-    # порядок важен из-за FK: сначала employees, потом departments
     await db_session.execute(delete(Employee))
     await db_session.execute(delete(Department))
     await db_session.commit()
