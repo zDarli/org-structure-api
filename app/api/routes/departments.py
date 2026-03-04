@@ -6,9 +6,14 @@ from app.schemas.department import (
     DepartmentCreate,
     DepartmentResponse,
     DepartmentTreeNode,
+    DepartmentUpdate,
 )
 from app.schemas.employee import EmployeeCreate, EmployeeResponse
-from app.services.departments import create_department, get_department_tree
+from app.services.departments import (
+    create_department,
+    get_department_tree,
+    update_department,
+)
 from app.services.employees import create_employee
 
 router = APIRouter(prefix="/departments", tags=["departments"])
@@ -52,3 +57,12 @@ async def create_employee_handler(
         db=db, department_id=department_id, payload=payload
     )
     return employee
+
+
+@router.patch("/departments/{department_id}", response_model=DepartmentResponse)
+async def update_department_handler(
+    department_id: int,
+    payload: DepartmentUpdate,
+    db: AsyncSession = Depends(get_db),
+) -> DepartmentResponse:
+    return await update_department(db=db, department_id=department_id, payload=payload)
