@@ -6,6 +6,8 @@ from pydantic import BaseModel, Field, field_validator, ConfigDict
 
 from app.schemas.employee import EmployeeResponse
 
+from enum import Enum
+
 
 class DepartmentBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
@@ -52,3 +54,8 @@ class DepartmentTreeNode(BaseModel):
     department: DepartmentResponse
     employees: List[EmployeeResponse] = []
     children: List["DepartmentTreeNode"] = []
+
+
+class DeleteMode(str, Enum):
+    cascade = "cascade"
+    reassign = "reassign"
