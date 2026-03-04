@@ -29,6 +29,21 @@ async def create_department(db: AsyncSession, data: DepartmentCreate) -> Departm
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Parent department not found",
             )
+    # this department already exists
+    if data.parent_id is None:
+        res = await db.execute(
+            select(Department).where(
+                Department.name == data.name,
+                Department.parent_id.is_(None),
+            )
+        )
+        existing = res.scalar_one_or_none()
+
+        if existing is not None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Department with this name already exists in this parent",
+            )
 
     department = Department(name=data.name, parent_id=data.parent_id)
     db.add(department)
