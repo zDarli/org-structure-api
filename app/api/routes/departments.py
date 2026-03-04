@@ -7,7 +7,9 @@ from app.schemas.department import (
     DepartmentResponse,
     DepartmentTreeNode,
 )
+from app.schemas.employee import EmployeeCreate, EmployeeResponse
 from app.services.departments import create_department, get_department_tree
+from app.services.employees import create_employee
 
 router = APIRouter(prefix="/departments", tags=["departments"])
 
@@ -34,3 +36,19 @@ async def get_department_handler(
         depth=depth,
         include_employees=include_employees,
     )
+
+
+@router.post(
+    "/departments/{department_id}/employees",
+    response_model=EmployeeResponse,
+    status_code=201,
+)
+async def create_employee_handler(
+    department_id: int,
+    payload: EmployeeCreate,
+    db: AsyncSession = Depends(get_db),
+) -> EmployeeResponse:
+    employee = await create_employee(
+        db=db, department_id=department_id, payload=payload
+    )
+    return employee
