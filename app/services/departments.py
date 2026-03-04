@@ -76,7 +76,7 @@ async def get_department_tree(
     current_level: List[int] = [root.id]
     all_ids: Set[int] = {root.id}
 
-    # 2) собрать департаменты по уровням (max 5 уровней — мало, можно без CTE)
+    # 2) собрать департаменты по уровням
     for _ in range(depth - 1):
         if not current_level:
             break
@@ -95,7 +95,7 @@ async def get_department_tree(
         current_level = [d.id for d in children]
         all_ids.update(current_level)
 
-    # 3) сотрудники одним запросом (если нужно)
+    # 3) сотрудники одним запросом
     employees_by_dep: Dict[int, List[EmployeeResponse]] = defaultdict(list)
     if include_employees and all_ids:
         res = await db.execute(
